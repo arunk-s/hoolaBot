@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"html"
 	"net/http"
+	"os"
 )
 
 func main() {
 	http.HandleFunc("/", helloHandler)
-	http.ListenAndServe(":8080", nil)
+	http.ListenAndServe(":"+os.Getenv("PORT"), nil)
 }
 
 func helloHandler(w http.ResponseWriter, r *http.Request) {
