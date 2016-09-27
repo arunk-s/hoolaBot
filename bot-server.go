@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 )
 
 var answeredUpdates int64
@@ -91,11 +92,11 @@ type answerInline struct {
 }
 
 type inlinePhoto struct {
-	Type    string `json:"type"`
-	ID      string `json:"id"`
-	PhotoID string `json:"photo_file_id"`
-	// PhotoURL       string              `json:"photo_url"`
-	// ThumbURL       string              `json:"thumb_url"`
+	Type string `json:"type"`
+	ID   string `json:"id"`
+	// PhotoID string `json:"photo_file_id"`
+	PhotoURL       string              `json:"photo_url"`
+	ThumbURL       string              `json:"thumb_url"`
 	MessageContent inputMessageContent `json:"input_message_content"`
 }
 
@@ -173,6 +174,7 @@ func doAction(w http.ResponseWriter, r *http.Request) {
 			}
 			values := url.Values{}
 			values.Add("inline_query_id", inline.ID)
+			values.Add("is_personal", strconv.FormatBool(true))
 			values.Add("results", string(inlineByte))
 			resp, err := http.PostForm(boturl+"/answerInlineQuery", values)
 			if err != nil {
