@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -141,7 +142,7 @@ func doAction(w http.ResponseWriter, r *http.Request) {
 		from   user
 		inline inlineQuery
 		// inlineAns answerInline
-		inlineResult []inlinePhoto
+		inlineResult []interface{}
 	)
 	// defer r.Body.Close()
 	rDecoder := json.NewDecoder(r.Body)
@@ -165,6 +166,7 @@ func doAction(w http.ResponseWriter, r *http.Request) {
 			inlineResult = append(inlineResult, answer)
 			inlineByte, err := json.Marshal(inlineResult)
 			if err != nil {
+				log.Printf("json marshal failed %v\n", err.Error())
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -179,10 +181,15 @@ func doAction(w http.ResponseWriter, r *http.Request) {
 
 			// fmt.Fprintf(w, "Hello, %v", values)
 			defer resp.Body.Close()
+			respbytes, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				log.Printf("reading resp failed %v\n", err.Error())
+				return
+			}
 			if resp.StatusCode == 200 {
 				log.Printf("Success answeredQuery %v\n", upd.ID)
 			} else {
-				log.Printf("Failed answeredQuery %v %v\n", resp.Status, values)
+				log.Printf("Failed answeredQuery %v %v %v\n", resp.Status, values, string(respbytes))
 			}
 			return
 		}
