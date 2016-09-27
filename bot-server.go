@@ -201,11 +201,11 @@ func doAction(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func makeMessage(ID string, from user, msg string) inlinePhoto {
+func makeMessage(ID string, from user, msg string) interface{} {
 
 	var (
-		fixed inlinePhoto
-		// fixed  inlineQueryResultArticle
+		// fixed inlinePhoto
+		fixed  inlineQueryResultArticle
 		answer string
 	)
 	if from.UserName != "" {
@@ -214,12 +214,16 @@ func makeMessage(ID string, from user, msg string) inlinePhoto {
 		answer = from.FirstName + " " + msg
 	}
 
-	fixed.Type = "photo"
+	// fixed.Type = "photo"
 	fixed.ID = ID
-	fixed.MessageContent = inputMessageContent{
-		Message: answer,
+	// fixed.MessageContent = inputMessageContent{
+	// 	Message: answer,
+	// }
+	fixed.InputMessageContent = inputTextMessageContent{
+		Text: answer,
 	}
-	// fixed.Type = "article"
+	fixed.Type = "article"
+	fixed.Title = "Echo"
 	// fixed.ID
 	answerIDs++
 	return fixed
