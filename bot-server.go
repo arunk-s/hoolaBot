@@ -197,6 +197,33 @@ func doAction(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	if upd.Message != nil {
+		values := url.Values{}
+		if v, ok := upd.Message["chat"].(map[string]interface{}); ok {
+			chatID := int(v["id"].(float64))
+			values.Add("chat_id", fmt.Sprintf("%d", chatID))
+			values.Add("text", "I just do this.")
+		}
+		resp, err := http.PostForm(boturl+"/sendMessage", values)
+		if err != nil {
+			log.Printf("POST to telegram (sendMessage) failed %v\n", err.Error())
+			return
+		}
+
+		// fmt.Fprintf(w, "Hello, %v", values)
+		defer resp.Body.Close()
+		respbytes, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			log.Printf("reading resp (sendMessage) failed %v\n", err.Error())
+			return
+		}
+		if resp.StatusCode == 200 {
+			log.Printf("Success send Message %v\n", upd.ID)
+		} else {
+			log.Printf("Failed sendMessage %v %v %v\n", resp.Status, values, string(respbytes))
+		}
+		return
+	}
 	log.Printf("Unfullfilled update %v\n", upd)
 	http.Error(w, "Only Inline query are Accepted", http.StatusNotImplemented)
 	return
