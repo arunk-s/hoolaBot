@@ -52,7 +52,7 @@ func (u *user) parseUser(m map[string]interface{}) {
 }
 
 type botUpdate struct {
-	ID                 int64                  `json:"update_integer"`
+	ID                 int64                  `json:"update_id"`
 	Message            map[string]interface{} `json:"message"`
 	EditedMessage      map[string]interface{} `json:"edited_message"`
 	InlineQuery        map[string]interface{} `json:"inline_query"`
@@ -218,7 +218,7 @@ func doAction(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if resp.StatusCode == 200 {
-			log.Printf("Success send Message %v\n", upd.ID)
+			log.Printf("Success sendMessage %v\n", upd.ID)
 		} else {
 			log.Printf("Failed sendMessage %v %v %v\n", resp.Status, values, string(respbytes))
 		}
