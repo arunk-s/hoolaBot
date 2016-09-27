@@ -59,7 +59,7 @@ type botUpdate struct {
 }
 
 type inlineQuery struct {
-	ID       int64                  `json:"id"`
+	ID       string                 `json:"id"`
 	From     map[string]interface{} `json:"from"`
 	Location map[string]interface{} `json:"location"`
 	Query    string                 `json:"query"`
@@ -67,8 +67,8 @@ type inlineQuery struct {
 }
 
 func (i *inlineQuery) parseInline(m map[string]interface{}) {
-	if v, ok := m["id"].(float64); ok {
-		i.ID = int64(v)
+	if v, ok := m["id"].(string); ok {
+		i.ID = (v)
 	}
 	if v, ok := m["from"].(map[string]interface{}); ok {
 		i.From = v
@@ -85,21 +85,43 @@ func (i *inlineQuery) parseInline(m map[string]interface{}) {
 }
 
 type answerInline struct {
-	ID     int64         `json:"inline_query_id"`
+	ID     string        `json:"inline_query_id"`
 	Result []inlinePhoto `json:"results"`
 }
 
 type inlinePhoto struct {
 	Type           string              `json:"type"`
-	ID             int64               `json:"id"`
+	ID             string              `json:"id"`
 	PhotoURL       string              `json:"photo_url"`
 	ThumbURL       string              `json:"thumb_url"`
 	MessageContent inputMessageContent `json:"input_message_content"`
 }
 
 type inputMessageContent struct {
-	Message   string `json:"message_text"`
-	ParseMode string `json:"parse_mode"`
+	Message               string `json:"message_text"`
+	ParseMode             string `json:"parse_mode"`
+	DisableWebPagePreview bool   `json:"disable_web_page_preview"`
+}
+
+type inputTextMessageContent struct {
+	Text                  string `json:"message_text"`
+	ParseMode             string `json:"parse_mode"`
+	DisableWebPagePreview bool   `json:"disable_web_page_preview"`
+}
+
+// InlineQueryResultArticle is an inline query response article.
+type inlineQueryResultArticle struct {
+	Type                string      `json:"type"`                            // required
+	ID                  string      `json:"id"`                              // required
+	Title               string      `json:"title"`                           // required
+	InputMessageContent interface{} `json:"input_message_content,omitempty"` // required
+	ReplyMarkup         interface{} `json:"reply_markup,omitempty"`
+	URL                 string      `json:"url"`
+	HideURL             bool        `json:"hide_url"`
+	Description         string      `json:"description"`
+	ThumbURL            string      `json:"thumb_url"`
+	ThumbWidth          int         `json:"thumb_width"`
+	ThumbHeight         int         `json:"thumb_height"`
 }
 
 func main() {
@@ -139,7 +161,7 @@ func doAction(w http.ResponseWriter, r *http.Request) {
 		inline.parseInline(upd.InlineQuery)
 		if inline.From != nil {
 			from.parseUser(inline.From)
-			answer := makeMessage(from, inline.Query)
+			answer := makeMessage(inline.ID, from, inline.Query)
 			inlineResult = append(inlineResult, answer)
 			inlineByte, err := json.Marshal(inlineResult)
 			if err != nil {
@@ -147,7 +169,7 @@ func doAction(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			values := url.Values{}
-			values.Add("inline_query_id", fmt.Sprintf("\"%d\"", inline.ID))
+			values.Add("inline_query_id", inline.ID)
 			values.Add("results", string(inlineByte))
 			resp, err := http.PostForm(boturl+"/answerInlineQuery", values)
 			if err != nil {
@@ -160,7 +182,7 @@ func doAction(w http.ResponseWriter, r *http.Request) {
 			if resp.StatusCode == 200 {
 				log.Printf("Success answeredQuery %v\n", upd.ID)
 			} else {
-				log.Printf("Failed answeredQuery %v\n", resp.Status)
+				log.Printf("Failed answeredQuery %v %v\n", resp.Status, values)
 			}
 			return
 		}
@@ -169,10 +191,11 @@ func doAction(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func makeMessage(from user, msg string) inlinePhoto {
+func makeMessage(ID string, from user, msg string) inlinePhoto {
 
 	var (
-		fixed  inlinePhoto
+		fixed inlinePhoto
+		// fixed  inlineQueryResultArticle
 		answer string
 	)
 	if from.UserName != "" {
@@ -182,10 +205,12 @@ func makeMessage(from user, msg string) inlinePhoto {
 	}
 
 	fixed.Type = "photo"
-	fixed.ID = int64(answerIDs)
+	fixed.ID = ID
 	fixed.MessageContent = inputMessageContent{
 		Message: answer,
 	}
+	// fixed.Type = "article"
+	// fixed.ID
 	answerIDs++
 	return fixed
 }
