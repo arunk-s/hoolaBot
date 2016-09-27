@@ -91,10 +91,11 @@ type answerInline struct {
 }
 
 type inlinePhoto struct {
-	Type           string              `json:"type"`
-	ID             string              `json:"id"`
-	PhotoURL       string              `json:"photo_url"`
-	ThumbURL       string              `json:"thumb_url"`
+	Type    string `json:"type"`
+	ID      string `json:"id"`
+	PhotoID string `json:"photo_file_id"`
+	// PhotoURL       string              `json:"photo_url"`
+	// ThumbURL       string              `json:"thumb_url"`
 	MessageContent inputMessageContent `json:"input_message_content"`
 }
 
