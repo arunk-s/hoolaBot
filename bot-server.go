@@ -197,6 +197,7 @@ func doAction(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	log.Printf("Unfullfilled update %v\n", upd)
 	http.Error(w, "Only Inline query are Accepted", http.StatusNotImplemented)
 	return
 }
