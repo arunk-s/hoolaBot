@@ -57,7 +57,7 @@ type botUpdate struct {
 	EditedMessage      map[string]interface{} `json:"edited_message"`
 	InlineQuery        map[string]interface{} `json:"inline_query"`
 	ChosenInlineResult map[string]interface{} `json:"chosen_inline_result"`
-	CallBackQuery      map[string]interface{} `json:"CallBackQuery"`
+	CallBackQuery      map[string]interface{} `json:"callback_query"`
 }
 
 type inlineQuery struct {
@@ -139,12 +139,11 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 func doAction(w http.ResponseWriter, r *http.Request) {
 	var (
-		boturl = "https://api.telegram.org/bot" + os.Getenv("BOT_TOKEN")
-		upd    botUpdate
-		from   user
-		inline inlineQuery
+		upd botUpdate
+		// from   user
+		// inline inlineQuery
 		// inlineAns answerInline
-		inlineResult []interface{}
+		// inlineResult []interface{}
 	)
 	// defer r.Body.Close()
 	rDecoder := json.NewDecoder(r.Body)
@@ -160,42 +159,17 @@ func doAction(w http.ResponseWriter, r *http.Request) {
 	}
 	answeredUpdates = upd.ID
 	if upd.InlineQuery != nil {
-
-		inline.parseInline(upd.InlineQuery)
-		if inline.From != nil {
-			from.parseUser(inline.From)
-			answer := makeMessage(inline.ID, from, inline.Query)
-			inlineResult = append(inlineResult, answer)
-			inlineByte, err := json.Marshal(inlineResult)
-			if err != nil {
-				log.Printf("json marshal failed %v\n", err.Error())
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			values := url.Values{}
-			values.Add("inline_query_id", inline.ID)
-			values.Add("is_personal", strconv.FormatBool(true))
-			values.Add("results", string(inlineByte))
-			resp, err := http.PostForm(boturl+"/answerInlineQuery", values)
-			if err != nil {
-				log.Printf("POST to telegram failed %v\n", err.Error())
-				return
-			}
-
-			// fmt.Fprintf(w, "Hello, %v", values)
-			defer resp.Body.Close()
-			respbytes, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-				log.Printf("reading resp failed %v\n", err.Error())
-				return
-			}
-			if resp.StatusCode == 200 {
-				log.Printf("Success answeredQuery %v\n", upd.ID)
-			} else {
-				log.Printf("Failed answeredQuery %v %v %v\n", resp.Status, values, string(respbytes))
-			}
+		v, err := answerInlineQuery(upd.InlineQuery)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		// fmt.Fprintf(w, "Hello, %v", v)
+		err = makeFormRequest("answerInlineQuery", v)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		return
 	}
 	if upd.Message != nil {
 		values := url.Values{}
@@ -204,23 +178,9 @@ func doAction(w http.ResponseWriter, r *http.Request) {
 			values.Add("chat_id", fmt.Sprintf("%d", chatID))
 			values.Add("text", "I just do this.")
 		}
-		resp, err := http.PostForm(boturl+"/sendMessage", values)
+		makeFormRequest("sendMessage", values)
 		if err != nil {
-			log.Printf("POST to telegram (sendMessage) failed %v\n", err.Error())
-			return
-		}
-
-		// fmt.Fprintf(w, "Hello, %v", values)
-		defer resp.Body.Close()
-		respbytes, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			log.Printf("reading resp (sendMessage) failed %v\n", err.Error())
-			return
-		}
-		if resp.StatusCode == 200 {
-			log.Printf("Success sendMessage %v\n", upd.ID)
-		} else {
-			log.Printf("Failed sendMessage %v %v %v\n", resp.Status, values, string(respbytes))
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		return
 	}
@@ -251,8 +211,59 @@ func makeMessage(ID string, from user, msg string) interface{} {
 		Text: answer,
 	}
 	fixed.Type = "article"
-	fixed.Title = "Echo"
+	fixed.Title = answer
 	// fixed.ID
 	answerIDs++
 	return fixed
+}
+
+func answerInlineQuery(m map[string]interface{}) (url.Values, error) {
+	var (
+		inline       inlineQuery
+		from         user
+		inlineResult []interface{}
+		values       = url.Values{}
+	)
+	inline.parseInline(m)
+	if inline.From != nil {
+		from.parseUser(inline.From)
+		answer := makeMessage(inline.ID, from, inline.Query)
+		inlineResult = append(inlineResult, answer)
+		inlineByte, err := json.Marshal(inlineResult)
+		if err != nil {
+			log.Printf("json marshal failed %v\n", err.Error())
+			return values, err
+		}
+		values.Add("inline_query_id", inline.ID)
+		values.Add("is_personal", strconv.FormatBool(true))
+		values.Add("results", string(inlineByte))
+		return values, nil
+	}
+	return values, nil
+}
+
+func makeFormRequest(method string, params url.Values) error {
+	var (
+		boturl = "https://api.telegram.org/bot" + os.Getenv("BOT_TOKEN")
+	)
+	resp, err := http.PostForm(boturl+"/"+method, params)
+	if err != nil {
+		log.Printf("Post to telegram failed %v\n", err.Error())
+		return err
+	}
+	defer resp.Body.Close()
+	respBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("Reading response failed %v\n", err.Error())
+		return err
+	}
+
+	if resp.StatusCode == 200 {
+		log.Printf("Success: %v\n", method)
+	} else {
+		log.Printf("Unexpected %v \n", resp.Status)
+		log.Printf("Data posted %v\n", params)
+		log.Printf("Response %v", string(respBytes))
+	}
+	return nil
 }
