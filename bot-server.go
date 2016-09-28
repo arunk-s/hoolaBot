@@ -140,12 +140,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 func doAction(w http.ResponseWriter, r *http.Request) {
 	var (
 		upd botUpdate
-		// from   user
-		// inline inlineQuery
-		// inlineAns answerInline
-		// inlineResult []interface{}
 	)
-	// defer r.Body.Close()
 	rDecoder := json.NewDecoder(r.Body)
 	err := rDecoder.Decode(&upd)
 	if err != nil {
